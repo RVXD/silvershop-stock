@@ -2,16 +2,21 @@
 
 namespace SilverShop\Stock\Model;
 
+use SilverStripe\Core\Config\Config;
+use SilverStripe\Forms\CheckboxField;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\Core\Injector\Injector;
 use SilverShop\Stock\Model\ProductWarehouse;
 
 class ProductWarehouseStock extends DataObject
 {
+    private static $use_unlimited_checkbox = false;
+
     private static $db = [
         'Quantity' => 'Varchar',
         'ProductID' => 'Int',
-        'ProductClass' => 'Varchar(255)' // instance of Buyable
+        'ProductClass' => 'Varchar(255)', // instance of Buyable
+        'Unlimited' => 'Boolean'
     ];
 
     private static $has_one = [
@@ -38,7 +43,8 @@ class ProductWarehouseStock extends DataObject
      * @var array
      */
     private static $defaults = [
-        'Quantity' => '-1'
+        'Quantity' => '-1',
+        'Unlimited' => '1'
     ];
 
     private static $indexes = [
@@ -53,6 +59,7 @@ class ProductWarehouseStock extends DataObject
                 $fields->replaceField($field->Name, $field->performReadonlyTransformation());
             }
         }
+
         return $fields;
     }
 

@@ -2,6 +2,8 @@
 
 namespace SilverShop\Stock\Extensions;
 
+use League\CLImate\TerminalObject\Dynamic\Checkbox\Checkbox;
+use SilverStripe\Forms\CheckboxField;
 use SilverStripe\ORM\DataExtension;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Forms\FieldList;
@@ -24,6 +26,7 @@ use SilverShop\Cart\ShoppingCart;
 use SilverShop\Model\Order;
 use SilverShop\Model\Variation\Variation;
 use SilverShop\Model\OrderItem;
+use Symbiote\GridFieldExtensions\GridFieldTitleHeader;
 
 /**
  * An extension which can be applied to either the shop {@link Product} or
@@ -55,20 +58,38 @@ class ProductStockExtension extends DataExtension
             GridFieldConfig::create()
                 ->addComponent(new GridFieldButtonRow('before'))
                 ->addComponent(new GridFieldToolbarHeader())
+                ->addComponent(new GridFieldTitleHeader())
                 ->addComponent(new GridFieldEditableColumns())
                 ->addComponent(new GridFieldProductStockField())
         );
 
-        $grid->getConfig()->getComponentByType(GridFieldEditableColumns::class)->setDisplayFields(array(
+        $config = $grid->getConfig();
+
+        $gridFields = array(
             'Title' => array(
+                'title' => _t(__CLASS__ . '.Title', 'Title'),
                 'field' => ReadonlyField::class
             ),
-            'Quantity'  => function ($record, $column, $grid) {
-                // Numeric doesn't support null type
-                // return new NumericField($column);
-                return new TextField($column);
-            }
-        ));
+            'Quantity'  => array(
+                'title' => _t(__CLASS__ . '.Quantity', 'Quantity'),
+                'callback' => function ($record, $column, $grid) {
+                    // Numeric doesn't support null type
+                    // return new NumericField($column);
+                    return TextField::create($column);
+                }
+            )
+        );
+
+        if( Config::inst()->get(ProductWarehouseStock::class, 'use_unlimited_checkbox') ){
+            $gridFields['Unlimited'] = array(
+                'title' => _t(__CLASS__ . '.Unlimited', 'Unlimited'),
+                'callback' => function ($record, $column, $grid) {
+                    return CheckboxField::create($column, _t(__CLASS__ . '.Unlimited', 'Unlimited'));
+                }
+            );
+        }
+
+        $config->getComponentByType(GridFieldEditableColumns::class)->setDisplayFields($gridFields);
 
         // if the record has a root tab, (page) otherwise it could be a
         // dataobject so we'll just
@@ -216,6 +237,11 @@ class ProductStockExtension extends DataExtension
      */
     public function hasWarehouseWithUnlimitedStock()
     {
+        // use checkbox instead of -1
+        if( Config::inst()->get(ProductWarehouseStock::class, 'use_unlimited_checkbox') ){
+            return ($this->getWarehouseStock()->filter("Unlimited",1)->count() > 0);
+        }
+
         return ($this->getWarehouseStock()->where("\"Quantity\" = -1")->count() > 0);
     }
 
@@ -318,7 +344,8 @@ class ProductStockExtension extends DataExtension
         $quantity = $orderItem->Quantity;
 
         foreach ($this->getWarehouseStock() as $warehouse) {
-            if ($warehouse->Quantity == "-1") {
+
+            if ($warehouse->Quantity == "-1" || (Config::inst()->get(ProductWarehouseStock::class, 'use_unlimited_checkbox') && $warehouse->Unlimited )) {
                 // unlimited
                 break;
             }
