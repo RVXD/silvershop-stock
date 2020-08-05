@@ -216,7 +216,7 @@ class ProductStockExtension extends DataExtension
      */
     public function hasWarehouseWithUnlimitedStock()
     {
-        return ($this->getWarehouseStock()->where("\"Quantity\" = -1")->count() > 0);
+        return ($this->getWarehouseStock()->filter("Quantity",-1)->count() > 0);
     }
 
 
