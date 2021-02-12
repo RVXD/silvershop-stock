@@ -164,25 +164,35 @@ class ProductStockExtension extends DataExtension
      *
      * @return boolean
      */
+
+    private static $_cached_hasAvailableStock = [];
+
     public function hasAvailableStock($require = 1)
     {
-        if ($this->hasVariations()) {
-            $stock = false;
 
+        if( isset( self::$_cached_hasAvailableStock[$this->owner->ClassName][$this->owner->ID] ) ){
+            return self::$_cached_hasAvailableStock[$this->owner->ClassName][$this->owner->ID];
+        }
+
+        if ($this->hasVariations()) {
             foreach ($this->owner->Variations() as $variation) {
                 if ($variation->hasAvailableStock($require)) {
+                    self::$_cached_hasAvailableStock[$this->owner->ClassName][$this->owner->ID] = 1;
                     return true;
                 }
             }
         }
 
         if ($this->hasWarehouseWithUnlimitedStock()) {
+            self::$_cached_hasAvailableStock[$this->owner->ClassName][$this->owner->ID] = 1;
             return true;
         } else {
             $stock = $this->getWarehouseStockQuantity();
+
             $pending = $this->getTotalStockInCarts();
 
             $result = ($stock - $pending) >= $require;
+            self::$_cached_hasAvailableStock[$this->owner->ClassName][$this->owner->ID] = (int) $result;
             return $result;
         }
     }
@@ -195,13 +205,6 @@ class ProductStockExtension extends DataExtension
      */
     public function getTotalStockInCarts()
     {
-        $current = ShoppingCart::curr();
-
-        $cartID = 0;
-        if( $current ){
-            $cartID = $current->ID;
-        }
-
         if($this->owner->isVariation()){
             $identifier = "Variation";
             $identifier2 = "ProductVariation";
@@ -216,7 +219,6 @@ class ProductStockExtension extends DataExtension
                         LEFT JOIN SilverShop_OrderAttribute ON SilverShop_OrderAttribute.ID=SilverShop_OrderItem.ID
                         LEFT JOIN SilverShop_Order ON SilverShop_Order.ID=SilverShop_OrderAttribute.OrderID
                         WHERE SilverShop_'.$identifier.'_OrderItem.'.$identifier2.'ID = ' . $this->owner->ID . '
-                        AND SilverShop_Order.ID != ' . $cartID . '
                         AND SilverShop_Order.Status=\'Cart\'
                         GROUP BY SilverShop_'.$identifier.'_OrderItem.'.$identifier2.'ID';
 
@@ -279,7 +281,6 @@ class ProductStockExtension extends DataExtension
             // no warehouses available.
             return true;
         }
-
         if ($this->hasVariations()) {
             // then just return. canPurchase will be called on those individual
             // variations, not the main product.
