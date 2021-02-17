@@ -3,6 +3,8 @@
 namespace SilverShop\Stock\Extensions;
 
 use League\CLImate\TerminalObject\Dynamic\Checkbox\Checkbox;
+use SilverShop\Page\CartPageController;
+use SilverStripe\Control\Controller;
 use SilverStripe\Forms\CheckboxField;
 use SilverStripe\ORM\DataExtension;
 use SilverStripe\Core\Injector\Injector;
@@ -205,6 +207,18 @@ class ProductStockExtension extends DataExtension
      */
     public function getTotalStockInCarts()
     {
+
+        $controller = Controller::curr();
+
+        $cartID = 0;
+        if( $controller instanceof CartPageController ){
+            // only if in CART overview, exclude current cartid
+            $current = ShoppingCart::curr();
+            if( $current ){
+                $cartID = $current->ID;
+            }
+        }
+
         if($this->owner->isVariation()){
             $identifier = "Variation";
             $identifier2 = "ProductVariation";
@@ -219,6 +233,7 @@ class ProductStockExtension extends DataExtension
                         LEFT JOIN SilverShop_OrderAttribute ON SilverShop_OrderAttribute.ID=SilverShop_OrderItem.ID
                         LEFT JOIN SilverShop_Order ON SilverShop_Order.ID=SilverShop_OrderAttribute.OrderID
                         WHERE SilverShop_'.$identifier.'_OrderItem.'.$identifier2.'ID = ' . $this->owner->ID . '
+                        AND SilverShop_Order.ID != ' . $cartID . '
                         AND SilverShop_Order.Status=\'Cart\'
                         GROUP BY SilverShop_'.$identifier.'_OrderItem.'.$identifier2.'ID';
 
