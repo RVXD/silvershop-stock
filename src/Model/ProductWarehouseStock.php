@@ -13,7 +13,7 @@ class ProductWarehouseStock extends DataObject
     private static $use_unlimited_checkbox = false;
 
     private static $db = [
-        'Quantity' => 'Varchar',
+        'Quantity' => 'Int',
         'ProductID' => 'Int',
         'ProductClass' => 'Varchar(255)', // instance of Buyable
         'Unlimited' => 'Boolean'
@@ -49,6 +49,9 @@ class ProductWarehouseStock extends DataObject
 
     private static $indexes = [
         'LastEdited' => true,
+        'ProductID' => true,
+        'ProductClass' => true,
+        'Quantity' => true
     ];
 
     public function getCMSFields()
