@@ -183,6 +183,8 @@ class ProductStockExtension extends DataExtension
                     return true;
                 }
             }
+           self::$_cached_hasAvailableStock[$this->owner->ClassName][$this->owner->ID] = 0;
+           return false;
         }
 
         if ($this->hasWarehouseWithUnlimitedStock()) {
