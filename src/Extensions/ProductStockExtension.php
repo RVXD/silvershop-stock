@@ -51,6 +51,7 @@ class ProductStockExtension extends Extension
      */
     private static int $pending_cart_max_age_mins = 0;
 
+
     public function updateCMSFields(FieldList $fields): void
     {
         if ($this->hasVariations()) {
@@ -363,11 +364,13 @@ class ProductStockExtension extends Extension
 
     public function hasWarehouseWithUnlimitedStock(): bool
     {
-        if (ProductWarehouseStock::config()->get('use_unlimited_checkbox')) {
-            return ($this->getWarehouseStock()->filter('Unlimited', true)->count() > 0);
+        foreach ($this->getWarehouseStockRecords() as $stock) {
+            if ($this->warehouseStockIsUnlimited($stock)) {
+                return true;
+            }
         }
 
-        return ($this->getWarehouseStock()->where("\"Quantity\" = '-1'")->count() > 0);
+        return false;
     }
 
     public function getWarehouseStock()
@@ -378,14 +381,32 @@ class ProductStockExtension extends Extension
         ]);
     }
 
+    /**
+     * The buyable's warehouse stock records. The underlying query is cached for the rest of the request via the ORM
+     * query cache ({@link \SilverStripe\ORM\DataList::setUseCache()}): the read paths (quantity, unlimited, "has any
+     * record") all derive from this, so one availability check no longer fires three queries for the same filter —
+     * and the cache is invalidated automatically when a ProductWarehouseStock is written, deleted or added.
+     *
+     * @return array<ProductWarehouseStock>
+     */
+    public function getWarehouseStockRecords(): array
+    {
+        return $this->getWarehouseStock()->setUseCache(true)->toArray();
+    }
+
     public function getWarehouseStockQuantity(): int
     {
-        return (int) $this->getWarehouseStock()->sum('Quantity');
+        $quantity = 0;
+        foreach ($this->getWarehouseStockRecords() as $stock) {
+            $quantity += (int) $stock->Quantity;
+        }
+
+        return $quantity;
     }
 
     public function canPurchase($member = null, int $quantity = 1): bool
     {
-        if ($this->getWarehouseStock()->count() < 1) {
+        if (count($this->getWarehouseStockRecords()) < 1) {
             return true;
         }
 
@@ -408,10 +429,12 @@ class ProductStockExtension extends Extension
 
     public function hasVariations(): bool
     {
-        $schema = $this->owner->getSchema();
-        $componentClass = $schema->hasManyComponent($this->owner->ClassName, 'Variations');
+        if (!$this->owner->getSchema()->hasManyComponent($this->owner->ClassName, 'Variations')) {
+            return false;
+        }
 
-        return ($componentClass && $this->owner->Variations()->exists());
+        // Cached for the rest of the request (and auto-invalidated on a Variation write).
+        return $this->owner->Variations()->setUseCache(true)->exists();
     }
 
     public function isVariation(): bool

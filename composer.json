@@ -10,7 +10,7 @@
     }],
 	"require": {
 		"php": "^8.3",
-		"silverstripe/framework": "^6.0",
+		"silverstripe/framework": "^6.1",
 		"silverstripe/reports": "^6.0",
 		"silvershop/core": "^6"
 	},
